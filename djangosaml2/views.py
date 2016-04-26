@@ -263,7 +263,7 @@ def logout(request, config_loader_path=None):
                 body = ''.join(http_info['data'])
                 body = body.replace(
                     '<input type="submit" value="Submit" />',
-                    '<input style="visibility: hidden;" type="submit" value="Submit" />')
+                    '<input style="position: absolute; left: -9999px;" type="submit" value="Submit" />')
                 logger.debug(body)
                 return HttpResponse(body)
             elif binding == BINDING_HTTP_REDIRECT:
