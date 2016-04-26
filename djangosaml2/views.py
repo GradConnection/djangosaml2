@@ -261,6 +261,9 @@ def logout(request, config_loader_path=None):
             if binding == BINDING_HTTP_POST:
                 logger.debug('Returning form to the IdP to continue the logout process')
                 body = ''.join(http_info['data'])
+                body = body.replace(
+                    '<input type="submit" value="Submit" />',
+                    '<input style="visibility: hidden;" type="submit" value="Submit" />')
                 logger.debug(body)
                 return HttpResponse(body)
             elif binding == BINDING_HTTP_REDIRECT:
