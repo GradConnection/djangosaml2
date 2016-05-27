@@ -21,6 +21,7 @@ except ImportError:
     from elementtree import ElementTree
 
 from django.conf import settings
+from django.core.exceptions import PermissionDenied
 from django.contrib import auth
 from django.contrib.auth.decorators import login_required
 from django.contrib.auth.views import logout as django_logout
@@ -42,6 +43,7 @@ from saml2 import BINDING_HTTP_REDIRECT, BINDING_HTTP_POST
 from saml2.client import Saml2Client
 from saml2.metadata import entity_descriptor
 from saml2.ident import code, decode
+from saml2.response import StatusRequestDenied
 
 from djangosaml2.cache import IdentityCache, OutstandingQueriesCache
 from djangosaml2.cache import StateCache
@@ -165,9 +167,14 @@ def assertion_consumer_service(request,
     oq_cache = OutstandingQueriesCache(request.session)
     outstanding_queries = oq_cache.outstanding_queries()
 
-    # process the authentication response
-    response = client.parse_authn_request_response(xmlstr, BINDING_HTTP_POST,
-                                                   outstanding_queries)
+    try:
+        # process the authentication response
+        response = client.parse_authn_request_response(xmlstr,
+                                                       BINDING_HTTP_POST,
+                                                       outstanding_queries)
+    except StatusRequestDenied:
+        raise PermissionDenied
+
     if response is None:
         logger.error('SAML response is None')
         return HttpResponseBadRequest(
@@ -190,7 +197,7 @@ def assertion_consumer_service(request,
                              create_unknown_user=create_unknown_user)
     if user is None:
         logger.error('The user is None')
-        return HttpResponseForbidden("Permission denied")
+        raise PermissionDenied
 
     auth.login(request, user)
     _set_subject_id(request.session, session_info['name_id'])
