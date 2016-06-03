@@ -43,7 +43,7 @@ from saml2 import BINDING_HTTP_REDIRECT, BINDING_HTTP_POST
 from saml2.client import Saml2Client
 from saml2.metadata import entity_descriptor
 from saml2.ident import code, decode
-from saml2.response import StatusRequestDenied
+from saml2.response import StatusRequestDenied, StatusError
 
 from djangosaml2.cache import IdentityCache, OutstandingQueriesCache
 from djangosaml2.cache import StateCache
@@ -316,9 +316,18 @@ def do_logout_service(request, data, binding, config_loader_path=None, next_page
 
     if 'SAMLResponse' in data:  # we started the logout
         logger.debug('Receiving a logout response from the IdP')
-        response = client.parse_logout_request_response(data['SAMLResponse'], binding)
-        state.sync()
-        return finish_logout(request, response, next_page=next_page)
+        try:
+            response = client.parse_logout_request_response(data['SAMLResponse'], binding)
+            state.sync()
+            return finish_logout(request, response, next_page=next_page)
+        except StatusError as e:
+            logger.error('StatusError exception during the logout: ' + repr(e))
+            logger.error('Proceeding with logout anyway.')
+
+            if next_page is None and hasattr(settings, 'LOGOUT_REDIRECT_URL'):
+                next_page = settings.LOGOUT_REDIRECT_URL
+
+            return django_logout(request, next_page=next_page)
 
     elif 'SAMLRequest' in data:  # logout started by the IdP
         logger.debug('Receiving a logout request from the IdP')
