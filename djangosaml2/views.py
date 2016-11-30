@@ -275,7 +275,10 @@ def logout(request, config_loader_path=None):
                 return HttpResponse(body)
             elif binding == BINDING_HTTP_REDIRECT:
                 logger.debug('Redirecting to the IdP to continue the logout process')
-                return HttpResponseRedirect(get_location(http_info))
+                auth.logout(request)
+                if getattr(settings, 'SYNC_TO_IDP', True):
+                    return HttpResponseRedirect(get_location(http_info))
+                return HttpResponseRedirect('/')
             else:
                 logger.error('Unknown binding: %s', binding)
                 return HttpResponseServerError('Failed to log out')
