@@ -232,7 +232,6 @@ def echo_attributes(request,
                               context_instance=RequestContext(request))
 
 
-@login_required
 def logout(request, config_loader_path=None):
     """SAML Logout Request initiator
 
@@ -240,6 +239,11 @@ def logout(request, config_loader_path=None):
     using the pysaml2 library to create the LogoutRequest.
     """
     logger.debug('Logout process started')
+    if not request.user.is_authenticated():
+        jwt = request.COOKIES.get('jwt')
+        if jwt:
+            request.del_jwt = True
+        return HttpResponseRedirect('/')
     state = StateCache(request.session)
     conf = get_config(config_loader_path, request)
 
