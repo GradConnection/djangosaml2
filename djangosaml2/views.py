@@ -82,6 +82,9 @@ def login(request,
     if not came_from:
         logger.warning('The next parameter exists but is empty')
         came_from = settings.LOGIN_REDIRECT_URL
+    partial = request.GET.get('partial', False)
+    if partial:
+        request.session['partial'] = True
 
     # if the user is already authenticated that maybe because of two reasons:
     # A) He has this URL in two browser windows and in the other one he
