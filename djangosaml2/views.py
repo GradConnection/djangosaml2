@@ -258,13 +258,18 @@ def logout(request, config_loader_path=None):
             'The session does not contains the subject id for user %s'
             % request.user)
 
-    result = client.global_logout(subject_id)
-
-    state.sync()
+    try:
+        result = client.global_logout(subject_id)
+        state.sync()
+    except:
+        result = None
 
     if not result:
-        logger.error("Looks like the user %s is not logged in any IdP/AA" % subject_id)
-        return HttpResponseBadRequest("You are not logged in any IdP/AA")
+        if hasattr(settings, 'LOGOUT_REDIRECT_URL'):
+            next_page = settings.LOGOUT_REDIRECT_URL
+        else:
+            next_page = '/'
+        return django_logout(request, next_page=next_page)
 
     if len(result) > 1:
         logger.error('Sorry, I do not know how to logout from several sources. I will logout just from the first one')
