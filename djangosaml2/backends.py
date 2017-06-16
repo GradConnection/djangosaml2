@@ -134,6 +134,8 @@ class Saml2Backend(ModelBackend):
 
         By default, returns the attribute unchanged.
         """
+        if isinstance(main_attribute, str):
+            return main_attribute.lower()
         return main_attribute
 
     def configure_user(self, user, attributes, attribute_mapping):
