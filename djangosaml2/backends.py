@@ -156,7 +156,7 @@ class Saml2Backend(ModelBackend):
         that field defined it will be set, otherwise it will try to set
         it in the profile object.
         """
-        if not attribute_mapping:
+        if not attribute_mapping or getattr(user, 'imported_from_data_script', False):
             return user
 
         try:
