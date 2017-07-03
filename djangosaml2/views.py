@@ -160,6 +160,8 @@ def assertion_consumer_service(request,
             'SAML_CREATE_UNKNOWN_USER', True)
     logger.debug('Assertion Consumer Service started')
     logger.debug(str(request.__dict__))
+    logger.debug('request.session info')
+    logger.debug(str(request.session__dict__))
 
     conf = get_config(config_loader_path, request)
     if 'SAMLResponse' not in request.POST:
@@ -167,7 +169,8 @@ def assertion_consumer_service(request,
             'Couldn\'t find "SAMLResponse" in POST data.')
     xmlstr = request.POST['SAMLResponse']
     client = Saml2Client(conf, identity_cache=IdentityCache(request.session))
-
+    logger.debug('SAML client information')
+    logger.debug(str(client.__dict__))
     oq_cache = OutstandingQueriesCache(request.session)
     outstanding_queries = oq_cache.outstanding_queries()
 
@@ -183,7 +186,9 @@ def assertion_consumer_service(request,
         logger.error('SAML response is None')
         return HttpResponseBadRequest(
             "SAML response has errors. Please check the logs")
-
+    
+    logger.debug('SAML response information')
+    logger.debug(str(response.__dict__))
     session_id = response.session_id()
     oq_cache.delete(session_id)
 
