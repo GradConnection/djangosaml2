@@ -160,9 +160,7 @@ def assertion_consumer_service(request,
             'SAML_CREATE_UNKNOWN_USER', True)
     logger.debug('Assertion Consumer Service started')
     logger.debug(str(request.__dict__))
-    logger.debug('request.session info')
-    logger.debug(str(request.session__dict__))
-
+    
     conf = get_config(config_loader_path, request)
     if 'SAMLResponse' not in request.POST:
         return HttpResponseBadRequest(
