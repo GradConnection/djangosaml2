@@ -220,7 +220,7 @@ def assertion_consumer_service(request,
         relay_state = settings.LOGIN_REDIRECT_URL
     logger.debug('Redirecting to the RelayState: ' + relay_state)
     logger.debug(user.email)
-    logger.debug(str(user.is_authenticated())
+    logger.debug(str(user.is_authenticated()))
     return HttpResponseRedirect(relay_state)
 
 
