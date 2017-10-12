@@ -53,6 +53,7 @@ from djangosaml2.utils import get_custom_setting, available_idps, get_location
 
 
 logger = logging.getLogger('djangosaml2')
+debug_logging_enabled = settings.CAMPUS_DEBUG_LOGGING
 
 
 def _set_subject_id(session, subject_id):
@@ -76,11 +77,13 @@ def login(request,
     using the pysaml2 library to create the AuthnRequest.
     It uses the SAML 2.0 Http Redirect protocol binding.
     """
-    logger.debug('Login process started')
+    if debug_logging_enabled:
+        logger.debug('Login process started')
 
     came_from = request.GET.get('next', settings.LOGIN_REDIRECT_URL)
     if not came_from:
-        logger.warning('The next parameter exists but is empty')
+        if debug_logging_enabled:
+            logger.warning('The next parameter exists but is empty')
         came_from = settings.LOGIN_REDIRECT_URL
     partial = request.GET.get('partial', False)
     if partial:
@@ -105,7 +108,8 @@ def login(request,
         if redirect_authenticated_user:
             return HttpResponseRedirect(came_from)
         else:
-            logger.debug('User is already logged in')
+            if debug_logging_enabled:
+                logger.debug('User is already logged in')
             return render_to_response(authorization_error_template, {
                     'came_from': came_from,
                     }, context_instance=RequestContext(request))
@@ -116,7 +120,8 @@ def login(request,
     # is a embedded wayf needed?
     idps = available_idps(conf)
     if selected_idp is None and len(idps) > 1:
-        logger.debug('A discovery process is needed')
+        if debug_logging_enabled:
+            logger.debug('A discovery process is needed')
         return render_to_response(wayf_template, {
                 'available_idps': idps.items(),
                 'came_from': came_from,
@@ -129,14 +134,16 @@ def login(request,
             binding=BINDING_HTTP_REDIRECT,
             )
     except TypeError as e:
-        logger.error('Unable to know which IdP to use')
+        if debug_logging_enabled:
+            logger.error('Unable to know which IdP to use')
         return HttpResponse(str(e))
-
-    logger.debug('Saving the session_id in the OutstandingQueries cache')
+    if debug_logging_enabled:
+        logger.debug('Saving the session_id in the OutstandingQueries cache')
     oq_cache = OutstandingQueriesCache(request.session)
     oq_cache.set(session_id, came_from)
 
-    logger.debug('Redirecting the user to the IdP')
+    if debug_logging_enabled:
+        logger.debug('Redirecting the user to the IdP')
     return HttpResponseRedirect(get_location(result))
 
 
@@ -158,17 +165,19 @@ def assertion_consumer_service(request,
             'SAML_ATTRIBUTE_MAPPING', {'uid': ('username', )})
     create_unknown_user = create_unknown_user or get_custom_setting(
             'SAML_CREATE_UNKNOWN_USER', True)
-    logger.debug('Assertion Consumer Service started')
-    logger.debug(str(request.__dict__))
-    
+    if debug_logging_enabled:
+        logger.debug('Assertion Consumer Service started')
+        logger.debug(str(request.__dict__))
+
     conf = get_config(config_loader_path, request)
     if 'SAMLResponse' not in request.POST:
         return HttpResponseBadRequest(
             'Couldn\'t find "SAMLResponse" in POST data.')
     xmlstr = request.POST['SAMLResponse']
     client = Saml2Client(conf, identity_cache=IdentityCache(request.session))
-    logger.debug('SAML client information')
-    logger.debug(str(client.__dict__))
+    if debug_logging_enabled:
+        logger.debug('SAML client information')
+        logger.debug(str(client.__dict__))
     oq_cache = OutstandingQueriesCache(request.session)
     outstanding_queries = oq_cache.outstanding_queries()
 
@@ -181,12 +190,14 @@ def assertion_consumer_service(request,
         raise PermissionDenied
 
     if response is None:
-        logger.error('SAML response is None')
+        if debug_logging_enabled:
+            logger.error('SAML response is None')
         return HttpResponseBadRequest(
             "SAML response has errors. Please check the logs")
-    
-    logger.debug('SAML response information')
-    logger.debug(str(response.__dict__))
+
+    if debug_logging_enabled:
+        logger.debug('SAML response information')
+        logger.debug(str(response.__dict__))
     session_id = response.session_id()
     oq_cache.delete(session_id)
 
@@ -197,30 +208,33 @@ def assertion_consumer_service(request,
         attribute_mapping = attribute_mapping()
     if callable(create_unknown_user):
         create_unknown_user = create_unknown_user()
-
-    logger.debug('Trying to authenticate the user')
+    if debug_logging_enabled:
+        logger.debug('Trying to authenticate the user')
     user = auth.authenticate(session_info=session_info,
                              attribute_mapping=attribute_mapping,
                              create_unknown_user=create_unknown_user)
     if user is None:
-        logger.error('The user is None')
+        if debug_logging_enabled:
+            logger.error('The user is None')
         raise PermissionDenied
 
     auth.login(request, user)
     _set_subject_id(request.session, session_info['name_id'])
-
-    logger.debug('Sending the post_authenticated signal')
+    if debug_logging_enabled:
+        logger.debug('Sending the post_authenticated signal')
     post_authenticated.send_robust(
         sender=user, session_info=session_info, request=request)
 
     # redirect the user to the view where he came from
     relay_state = request.POST.get('RelayState', '/')
     if not relay_state:
-        logger.warning('The RelayState parameter exists but is empty')
+        if debug_logging_enabled:
+            logger.warning('The RelayState parameter exists but is empty')
         relay_state = settings.LOGIN_REDIRECT_URL
-    logger.debug('Redirecting to the RelayState: ' + relay_state)
-    logger.debug(user.email)
-    logger.debug(str(user.is_authenticated()))
+    if debug_logging_enabled:
+        logger.debug('Redirecting to the RelayState: ' + relay_state)
+        logger.debug(user.email)
+        logger.debug(str(user.is_authenticated()))
     return HttpResponseRedirect(relay_state)
 
 
@@ -247,7 +261,8 @@ def logout(request, config_loader_path=None):
     This view initiates the SAML2 Logout request
     using the pysaml2 library to create the LogoutRequest.
     """
-    logger.debug('Logout process started')
+    if debug_logging_enabled:
+        logger.debug('Logout process started')
     if not request.user.is_authenticated():
         jwt = request.COOKIES.get('jwt')
         if jwt:
@@ -260,9 +275,10 @@ def logout(request, config_loader_path=None):
                          identity_cache=IdentityCache(request.session))
     subject_id = _get_subject_id(request.session)
     if subject_id is None:
-        logger.warning(
-            'The session does not contains the subject id for user %s'
-            % request.user)
+        if debug_logging_enabled:
+            logger.warning(
+                'The session does not contains the subject id for user %s'
+                % request.user)
 
     try:
         result = client.global_logout(subject_id)
@@ -277,34 +293,38 @@ def logout(request, config_loader_path=None):
             next_page = '/'
         return django_logout(request, next_page=next_page)
 
-    if len(result) > 1:
+    if debug_logging_enabled and len(result) > 1:
         logger.error('Sorry, I do not know how to logout from several sources. I will logout just from the first one')
 
     for entityid, logout_info in result.items():
         if isinstance(logout_info, tuple):
             binding, http_info = logout_info
             if binding == BINDING_HTTP_POST:
-                logger.debug('Returning form to the IdP to continue the logout process')
+                if debug_logging_enabled:
+                    logger.debug('Returning form to the IdP to continue the logout process')
                 body = ''.join(http_info['data'])
                 body = body.replace(
                     '<input type="submit" value="Submit" />',
                     '<input style="position: absolute; left: -9999px;" type="submit" value="Submit" />')
-                logger.debug(body)
+                if debug_logging_enabled:
+                    logger.debug(body)
                 return HttpResponse(body)
             elif binding == BINDING_HTTP_REDIRECT:
-                logger.debug('Redirecting to the IdP to continue the logout process')
+                if debug_logging_enabled:
+                    logger.debug('Redirecting to the IdP to continue the logout process')
                 auth.logout(request)
                 if getattr(settings, 'SYNC_TO_IDP', True):
                     return HttpResponseRedirect(get_location(http_info))
                 return HttpResponseRedirect('/')
             else:
-                logger.error('Unknown binding: %s', binding)
+                if debug_logging_enabled:
+                    logger.error('Unknown binding: %s', binding)
                 return HttpResponseServerError('Failed to log out')
         else:
             # We must have had a soap logout
             return finish_logout(request, logout_info)
-
-    logger.error('Could not logout because there only the HTTP_REDIRECT is supported')
+    if debug_logging_enabled:
+        logger.error('Could not logout because there only the HTTP_REDIRECT is supported')
     return HttpResponseServerError('Logout Binding not supported')
 
 
@@ -328,7 +348,8 @@ def do_logout_service(request, data, binding, config_loader_path=None, next_page
     we didn't initiate the process as a single logout
     request started by another SP.
     """
-    logger.debug('Logout service started')
+    if debug_logging_enabled:
+        logger.debug('Logout service started')
     conf = get_config(config_loader_path, request)
 
     state = StateCache(request.session)
@@ -336,14 +357,16 @@ def do_logout_service(request, data, binding, config_loader_path=None, next_page
                          identity_cache=IdentityCache(request.session))
 
     if 'SAMLResponse' in data:  # we started the logout
-        logger.debug('Receiving a logout response from the IdP')
+        if debug_logging_enabled:
+            logger.debug('Receiving a logout response from the IdP')
         try:
             response = client.parse_logout_request_response(data['SAMLResponse'], binding)
             state.sync()
             return finish_logout(request, response, next_page=next_page)
         except StatusError as e:
-            logger.error('StatusError exception during the logout: ' + repr(e))
-            logger.error('Proceeding with logout anyway.')
+            if debug_logging_enabled:
+                logger.error('StatusError exception during the logout: ' + repr(e))
+                logger.error('Proceeding with logout anyway.')
 
             if next_page is None and hasattr(settings, 'LOGOUT_REDIRECT_URL'):
                 next_page = settings.LOGOUT_REDIRECT_URL
@@ -351,12 +374,14 @@ def do_logout_service(request, data, binding, config_loader_path=None, next_page
             return django_logout(request, next_page=next_page)
 
     elif 'SAMLRequest' in data:  # logout started by the IdP
-        logger.debug('Receiving a logout request from the IdP')
+        if debug_logging_enabled:
+            logger.debug('Receiving a logout request from the IdP')
         subject_id = _get_subject_id(request.session)
         if subject_id is None:
-            logger.warning(
-                'The session does not contain the subject id for user %s. Performing local logout'
-                % request.user)
+            if debug_logging_enabled:
+                logger.warning(
+                    'The session does not contain the subject id for user %s. Performing local logout'
+                    % request.user)
             auth.logout(request)
             return render_to_response(logout_error_template, {},
                                       context_instance=RequestContext(request))
@@ -369,7 +394,8 @@ def do_logout_service(request, data, binding, config_loader_path=None, next_page
             auth.logout(request)
             return HttpResponseRedirect(get_location(http_info))
     else:
-        logger.error('No SAMLResponse or SAMLRequest parameter found')
+        if debug_logging_enabled:
+            logger.error('No SAMLResponse or SAMLRequest parameter found')
         raise Http404('No SAMLResponse or SAMLRequest parameter found')
 
 
@@ -377,11 +403,13 @@ def finish_logout(request, response, next_page=None):
     if response and response.status_ok():
         if next_page is None and hasattr(settings, 'LOGOUT_REDIRECT_URL'):
             next_page = settings.LOGOUT_REDIRECT_URL
-        logger.debug('Performing django_logout with a next_page of %s'
-                     % next_page)
+        if debug_logging_enabled:
+            logger.debug('Performing django_logout with a next_page of %s'
+                         % next_page)
         return django_logout(request, next_page=next_page)
     else:
-        logger.error('Unknown error during the logout')
+        if debug_logging_enabled:
+            logger.error('Unknown error during the logout')
         return HttpResponse('Error during logout')
 
 

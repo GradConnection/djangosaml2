@@ -30,6 +30,7 @@ except ImportError:
 
 
 logger = logging.getLogger('djangosaml2')
+debug_logging_enabled = settings.CAMPUS_DEBUG_LOGGING
 
 # Django 1.5 Custom user model
 try:
@@ -42,15 +43,18 @@ class Saml2Backend(ModelBackend):
     def authenticate(self, session_info=None, attribute_mapping=None,
                      create_unknown_user=True):
         if session_info is None or attribute_mapping is None:
-            logger.error('Session info or attribute mapping are None')
+            if debug_logging_enabled
+                logger.error('Session info or attribute mapping are None')
             return None
 
         if not 'ava' in session_info:
-            logger.error('"ava" key not found in session_info')
+            if debug_logging_enabled
+                logger.error('"ava" key not found in session_info')
             return None
 
         attributes = session_info['ava']
-        if not attributes:
+
+        if debug_logging_enabled and not attributes:
             logger.error('The attributes dictionary is empty')
 
         use_name_id_as_username = getattr(
@@ -59,23 +63,29 @@ class Saml2Backend(ModelBackend):
         django_user_main_attribute = getattr(
             settings, 'SAML_DJANGO_USER_MAIN_ATTRIBUTE', 'username')
 
-        logger.debug('attributes: %s' % attributes)
+        if debug_logging_enabled:
+            logger.debug('attributes: %s' % attributes)
+
         saml_user = None
         if use_name_id_as_username:
             if 'name_id' in session_info:
-                logger.debug('name_id: %s' % session_info['name_id'])
+                if debug_logging_enabled:
+                    logger.debug('name_id: %s' % session_info['name_id'])
                 saml_user = session_info['name_id'].text
             else:
-                logger.error('The nameid is not available. Cannot find user without a nameid.')
+                if debug_logging_enabled:
+                    logger.error('The nameid is not available. Cannot find user without a nameid.')
         else:
-            logger.debug('attribute_mapping: %s' % attribute_mapping)
+            if debug_logging_enabled:
+                logger.debug('attribute_mapping: %s' % attribute_mapping)
             for saml_attr, django_fields in attribute_mapping.items():
                 if (django_user_main_attribute in django_fields
                     and saml_attr in attributes):
                     saml_user = attributes[saml_attr][0]
 
         if saml_user is None:
-            logger.error('Could not find saml_user value')
+            if debug_logging_enabled:
+                logger.error('Could not find saml_user value')
             return None
 
         if not self.is_authorized(attributes, attribute_mapping):
@@ -91,31 +101,38 @@ class Saml2Backend(ModelBackend):
         # instead we use get_or_create when creating unknown users since it has
         # built-in safeguards for multiple threads.
         if create_unknown_user:
-            logger.debug('Check if the user "%s" exists or create otherwise'
-                         % main_attribute)
+            if debug_logging_enabled:
+                logger.debug('Check if the user "%s" exists or create otherwise'
+                            % main_attribute)
             try:
                 user, created = User.objects.get_or_create(**user_query_args)
             except MultipleObjectsReturned:
-                logger.error("There are more than one user with %s = %s" %
+                if debug_logging_enabled:
+                    logger.error("There are more than one user with %s = %s" %
                              (django_user_main_attribute, main_attribute))
                 return None
 
             if created:
-                logger.debug('New user created')
+                if debug_logging_enabled:
+                    logger.debug('New user created')
                 user = self.configure_user(user, attributes, attribute_mapping)
             else:
-                logger.debug('User updated')
+                if debug_logging_enabled:
+                    logger.debug('User updated')
                 user = self.update_user(user, attributes, attribute_mapping)
         else:
-            logger.debug('Retrieving existing user "%s"' % main_attribute)
+            if debug_logging_enabled:
+                logger.debug('Retrieving existing user "%s"' % main_attribute)
             try:
                 user = User.objects.get(**user_query_args)
                 user = self.update_user(user, attributes, attribute_mapping)
             except User.DoesNotExist:
-                logger.error('The user "%s" does not exist' % main_attribute)
+                if debug_logging_enabled:
+                    logger.error('The user "%s" does not exist' % main_attribute)
                 return None
             except MultipleObjectsReturned:
-                logger.error("There are more than one user with %s = %s" %
+                if debug_logging_enabled:
+                    logger.error("There are more than one user with %s = %s" %
                              (django_user_main_attribute, main_attribute))
                 return None
 
@@ -187,8 +204,8 @@ class Saml2Backend(ModelBackend):
             except KeyError:
                 # the saml attribute is missing
                 pass
-
-        logger.debug('Sending the pre_save signal')
+        if debug_logging_enabled:
+            logger.debug('Sending the pre_save signal')
         signal_modified = any(
             [response for receiver, response
              in pre_user_save.send_robust(sender=user,
