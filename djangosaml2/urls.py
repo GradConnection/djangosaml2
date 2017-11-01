@@ -12,6 +12,7 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
+import views
 
 try:
     from django.conf.urls import patterns, handler500, url
@@ -19,14 +20,14 @@ try:
 except ImportError:
     from django.conf.urls.defaults import patterns, handler500, url
 
-urlpatterns = patterns(
+urlpatterns = [
     'djangosaml2.views',
-    url(r'^login/$', 'login', name='saml2_login'),
-    url(r'^acs/$', 'assertion_consumer_service', name='saml2_acs'),
-    url(r'^logout/$', 'logout', name='saml2_logout'),
-    url(r'^ls/$', 'logout_service', name='saml2_ls'),
-    url(r'^ls/post/$', 'logout_service_post', name='saml2_ls_post'),
-    url(r'^metadata/$', 'metadata', name='saml2_metadata'),
-)
+    url(r'^login/$', views.login, name='saml2_login'),
+    url(r'^acs/$', views.assertion_consumer_service, name='saml2_acs'),
+    url(r'^logout/$', views.logout, name='saml2_logout'),
+    url(r'^ls/$', views.logout_service, name='saml2_ls'),
+    url(r'^ls/post/$', views.logout_service_post, name='saml2_ls_post'),
+    url(r'^metadata/$', views.metadata, name='saml2_metadata'),
+]
 
 handler500 = handler500
