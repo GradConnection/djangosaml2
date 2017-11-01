@@ -15,7 +15,7 @@
 import views
 
 try:
-    from django.conf.urls import patterns, handler500, url
+    from django.conf.urls import handler500, url
 # Fallback for Django versions < 1.4
 except ImportError:
     from django.conf.urls.defaults import patterns, handler500, url
@@ -26,7 +26,6 @@ urlpatterns = [
     url(r'^acs/$', views.assertion_consumer_service, name='saml2_acs'),
     url(r'^logout/$', views.logout, name='saml2_logout'),
     url(r'^ls/$', views.logout_service, name='saml2_ls'),
-    
     url(r'^ls/post/$', views.logout_service_post, name='saml2_ls_post'),
     url(r'^metadata/$', views.metadata, name='saml2_metadata'),
 ]
