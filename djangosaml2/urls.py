@@ -14,14 +14,11 @@
 # limitations under the License.
 import views
 
-try:
-    from django.conf.urls import handler500, url
-# Fallback for Django versions < 1.4
-except ImportError:
-    from django.conf.urls.defaults import patterns, handler500, url
+from django.conf.urls import url
+from djangosaml2 import views
+
 
 urlpatterns = [
-    'djangosaml2.views',
     url(r'^login/$', views.login, name='saml2_login'),
     url(r'^acs/$', views.assertion_consumer_service, name='saml2_acs'),
     url(r'^logout/$', views.logout, name='saml2_logout'),
@@ -29,5 +26,3 @@ urlpatterns = [
     url(r'^ls/post/$', views.logout_service_post, name='saml2_ls_post'),
     url(r'^metadata/$', views.metadata, name='saml2_metadata'),
 ]
-
-handler500 = handler500

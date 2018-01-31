@@ -1,8 +1,11 @@
-.. contents::
-
 ===========
 djangosaml2
 ===========
+
+.. image:: https://travis-ci.org/knaperek/djangosaml2.svg?branch=master
+    :target: https://travis-ci.org/knaperek/djangosaml2
+    :align: left
+
 
 djangosaml2 is a Django application that integrates the PySAML2 library
 into your project. This mean that you can protect your Django based project
@@ -11,6 +14,7 @@ your Identity Provider allowing you to use this authentication mechanism.
 This document will guide you through a few simple steps to accomplish
 such goal.
 
+.. contents::
 
 Installation
 ============
@@ -29,13 +33,13 @@ will also install PySAML2 and its dependencies automatically.
 Configuration
 =============
 
-There are three things you need to setup to make djangosaml2 works in your
+There are three things you need to setup to make djangosaml2 work in your
 Django project:
 
 1. **settings.py** as you may already know, it is the main Django
    configuration file.
 2. **urls.py** is the file where you will include djangosaml2 urls.
-3. **pysaml2** specific files such as a attribute map directory and a
+3. **pysaml2** specific files such as an attribute map directory and a
    certificate.
 
 
@@ -61,11 +65,14 @@ do to make sure it is compatible with your Django version and environment.
 
 .. note::
 
-  When you finish the configuation you can run the djangosaml2 test suite
-  as you run any other Django application test suite. Just type
-  ``python manage.py test djangosaml2``
+  When you finish the configuration you can run the djangosaml2 test suite as
+  you run any other Django application test suite. Just type ``python manage.py
+  test djangosaml2``.
 
-Then you have to add the djangosaml2.backends.Saml2Backend
+  Python 2 users need to ``pip install djangosaml2[test]`` in order to run the
+  tests.
+
+Then you have to add the ``djangosaml2.backends.Saml2Backend``
 authentication backend to the list of authentications backends.
 By default only the ModelBackend included in Django is configured.
 A typical configuration would look like this::
@@ -85,7 +92,7 @@ A typical configuration would look like this::
   djangosaml2 0.5.0 it is now possible to define such
   backends.
 
-Finally we have to tell Django what is the new login url we want to use::
+Finally we have to tell Django what the new login url we want to use is::
 
   LOGIN_URL = '/saml2/login/'
   SESSION_EXPIRE_AT_BROWSER_CLOSE = True
@@ -106,11 +113,21 @@ If you want to allow several authentication mechanisms in your project
 you should set the LOGIN_URL option to another view and put a link in such
 view to the ``/saml2/login/`` view.
 
+Preferred Logout binding
+------------------------
+Use the following setting to choose your preferred binding for SP initiated logout requests::
+
+  SAML_LOGOUT_REQUEST_PREFERRED_BINDING
+
+For example::
+
+  import saml2
+  SAML_LOGOUT_REQUEST_PREFERRED_BINDING = saml2.BINDING_HTTP_POST
 
 Changes in the urls.py file
 ---------------------------
 
-The next thing you need to do is to include ``djangosaml2.urls`` module to your
+The next thing you need to do is to include ``djangosaml2.urls`` module in your
 main ``urls.py`` module::
 
   urlpatterns = patterns(
@@ -141,6 +158,7 @@ We will see a typical configuration for protecting a Django project::
 
   from os import path
   import saml2
+  import saml2.saml
   BASEDIR = path.dirname(path.abspath(__file__))
   SAML_CONFIG = {
     # full path to the xmlsec1 binary programm
@@ -170,7 +188,6 @@ We will see a typical configuration for protecting a Django project::
                 'single_logout_service': [
                     ('http://localhost:8000/saml2/ls/',
                      saml2.BINDING_HTTP_REDIRECT),
-                    ],
                     ('http://localhost:8000/saml2/ls/post',
                      saml2.BINDING_HTTP_POST),
                     ],
@@ -209,9 +226,15 @@ We will see a typical configuration for protecting a Django project::
     # set to 1 to output debugging information
     'debug': 1,
 
-    # certificate
+    # Signing
     'key_file': path.join(BASEDIR, 'mycert.key'),  # private part
     'cert_file': path.join(BASEDIR, 'mycert.pem'),  # public part
+
+    # Encryption
+    'encryption_keypairs': [{
+        'key_file': path.join(BASEDIR, 'my_encryption_key.key'),  # private part
+        'cert_file': path.join(BASEDIR, 'my_encryption_cert.pem'),  # public part
+    }],
 
     # own metadata settings
     'contact_person': [
@@ -240,7 +263,7 @@ We will see a typical configuration for protecting a Django project::
   Please check the `PySAML2 documentation`_ for more information about
   these and other configuration options.
 
-.. _`PySAML2 documentation`: http://packages.python.org/pysaml2/
+.. _`PySAML2 documentation`: http://pysaml2.readthedocs.io/en/latest/
 
 There are several external files and directories you have to create according
 to this configuration.
@@ -259,9 +282,10 @@ metadata for remote entities. Usually the easiest type is the ``local`` where
 you just put the name of a local XML file with the contents of the remote
 entities metadata. This XML file should be in the SAML2 metadata format.
 
-The ``key_file`` and ``cert_file`` options references the two parts of a
-standard x509 certificate. You need it to sign your metadata an to encrypt
-and decrypt the SAML2 assertions.
+The ``key_file`` and ``cert_file`` options reference the two parts of a
+standard x509 certificate. You need it to sign your metadata. For assertion
+encryption/decryption support please configure another set of ``key_file`` and
+``cert_file``, but as inner attributes of ``encryption_keypairs`` option.
 
 .. note::
 
@@ -289,23 +313,32 @@ User attributes
 ---------------
 
 In the SAML 2.0 authentication process the Identity Provider (IdP) will
-send a security assertion to the Service Provider (SP) upon a succesful
+send a security assertion to the Service Provider (SP) upon a successful
 authentication. This assertion contains attributes about the user that
 was authenticated. It depends on the IdP configuration what exact
 attributes are sent to each SP it can talk to.
 
-When such assertion is received on the Django side it is used to find
-a Django user and create a session for it. By default djangosaml2 will
-do a query on the User model with the 'username' attribute but you can
-change it to any other attribute of the User model. For example,
-you can do this look up using the 'email' attribute. In order to do so
-you should set the following setting::
+When such assertion is received on the Django side it is used to find a Django
+user and create a session for it. By default djangosaml2 will do a query on the
+User model with the USERNAME_FIELD_ attribute but you can change it to any
+other attribute of the User model. For example, you can do this lookup using
+the 'email' attribute. In order to do so you should set the following setting::
 
   SAML_DJANGO_USER_MAIN_ATTRIBUTE = 'email'
 
+.. _USERNAME_FIELD: https://docs.djangoproject.com/en/dev/topics/auth/customizing/#django.contrib.auth.models.CustomUser.USERNAME_FIELD
+
 Please, use an unique attribute when setting this option. Otherwise
-the authentication process will fail because djangosaml2 does not know
+the authentication process may fail because djangosaml2 will not know
 which Django user it should pick.
+
+If your main attribute is something inherently case-insensitive (such as
+an email address), you may set::
+
+  SAML_DJANGO_USER_MAIN_ATTRIBUTE_LOOKUP = '__iexact'
+
+(This is simply appended to the main attribute name to form a Django
+query. Your main attribute must be unique even given this lookup.)
 
 Another option is to use the SAML2 name id as the username by setting::
 
@@ -319,6 +352,13 @@ can set in the settings.py file::
   SAML_CREATE_UNKNOWN_USER = True
 
 This setting is True by default.
+
+  ACS_DEFAULT_REDIRECT_URL = reverse_lazy('some_url_name')
+
+This setting lets you specify a URL for redirection after a successful
+authentication. Particularly useful when you only plan to use
+IdP initiated login and the IdP does not have a configured RelayState
+parameter. The default is ``/``.
 
 The other thing you will probably want to configure is the mapping of
 SAML2 user attributes to Django user attributes. By default only the
@@ -340,11 +380,46 @@ If you are using Django user profile objects to store extra attributes
 about your user you can add those attributes to the SAML_ATTRIBUTE_MAPPING
 dictionary. For each (key, value) pair, djangosaml2 will try to store the
 attribute in the User model if there is a matching field in that model.
-Otherwise it will try to do the same with your profile custom model.
+Otherwise it will try to do the same with your profile custom model. For
+multi-valued attributes only the first value is assigned to the destination field.
+
+Alternatively, custom processing of attributes can be achieved by setting the
+value(s) in the SAML_ATTRIBUTE_MAPPING, to name(s) of method(s) defined on a
+custom django User object. In this case, each method is called by djangosaml2,
+passing the full list of attribute values extracted from the <saml:AttributeValue>
+elements of the <saml:Attribute>. Among other uses, this is a useful way to process
+multi-valued attributes such as lists of user group names.
+
+For example:
+
+Saml assertion snippet::
+
+  <saml:Attribute Name="groups" NameFormat="urn:oasis:names:tc:SAML:2.0:attrname-format:basic">
+        <saml:AttributeValue>group1</saml:AttributeValue>
+        <saml:AttributeValue>group2</saml:AttributeValue>
+        <saml:AttributeValue>group3</saml:AttributeValue>
+  </saml:Attribute>
+
+Custom User object::
+
+  from django.contrib.auth.models import AbstractUser
+
+  class User(AbstractUser):
+
+    def process_groups(self, groups):
+      // process list of group names in argument 'groups'
+      pass;
+
+settings.py::
+
+  SAML_ATTRIBUTE_MAPPING = {
+      'groups': ('process_groups', ),
+  }
+
 
 Learn more about Django profile models at:
 
-https://docs.djangoproject.com/en/dev/topics/auth/#storing-additional-information-about-users
+https://docs.djangoproject.com/en/dev/topics/auth/customizing/#substituting-a-custom-user-model
 
 
 Sometimes you need to use special logic to update the user object
@@ -355,7 +430,7 @@ following code to your app::
 
   from djangosaml2.signals import pre_user_save
 
-  def custom_update_user(sender=user, attributes=attributes, user_modified=user_modified)
+  def custom_update_user(sender=User, instance, attributes, user_modified, **kargs)
      ...
      return True  # I modified the user object
 
