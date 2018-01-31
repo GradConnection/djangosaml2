@@ -14,7 +14,6 @@
 # limitations under the License.
 
 from saml2.cache import Cache
-from saml2.ident import code, decode
 
 
 class DjangoSessionCacheAdapter(dict):
@@ -35,9 +34,13 @@ class DjangoSessionCacheAdapter(dict):
         self.session[self.key] = objects
 
     def sync(self):
-        objs = {}
-        objs.update(self)
-        self._set_objects(objs)
+        # Changes in inner objects do not cause session invalidation
+        # https://docs.djangoproject.com/en/1.9/topics/http/sessions/#when-sessions-are-saved
+
+        #add objects to session
+        self._set_objects(dict(self))
+        #invalidate session
+        self.session.modified = True
 
 
 class OutstandingQueriesCache(object):
@@ -75,28 +78,6 @@ class IdentityCache(Cache):
     def __init__(self, django_session):
         self._db = DjangoSessionCacheAdapter(django_session, '_identities')
         self._sync = True
-
-    def get(self, name_id, entity_id, *args, **kwargs):
-        info = super(IdentityCache, self).get(name_id, entity_id, *args, **kwargs)
-        try:
-            name_id = info['name_id']
-        except KeyError:
-            pass
-        else:
-            info = dict(info)
-            info['name_id'] = decode(name_id)
-
-        return info
-
-    def set(self, name_id, entity_id, info, *args, **kwargs):
-        try:
-            name_id = info['name_id']
-        except KeyError:
-            pass
-        else:
-            info = dict(info)
-            info['name_id'] = code(name_id)
-        return super(IdentityCache, self).set(name_id, entity_id, info, *args, **kwargs)
 
 
 class StateCache(DjangoSessionCacheAdapter):

@@ -1,6 +1,92 @@
 Changes
 =======
 
+UNRELEASED
+----------
+- A 403 (permission denied) is now raised if a SAMLResponse is replayed, instead of 500.
+
+0.16.11 (2017-12-25)
+----------
+- Dropped compatibility for Python < 2.7 and Django < 1.8.
+- Added a clean_attributes hook allowing backends to restructure attributes extracted from SAML response.
+- Log when fields are missing in a SAML response.
+- Log when attribute_mapping maps to nonexistent User fields.
+- Multiple compatibility fixes and other minor improvements and code cleanups
+
+Thanks to francoisfreitag, mhindery, charn, jdufresne
+
+0.16.10 (2017-10-02)
+-------------------
+- Bugfixes and internal refactorings.
+- Added support for custom USERNAME_FIELD on custom User models. Many thanks to francoisfreitag.
+
+0.16.9 (2017-09-19)
+-------------------
+- Bugfixes and minor improvements. Thanks to goetzk and AmbientLighter.
+- Added option SAML_LOGOUT_REQUEST_PREFERRED_BINDING
+- Added Django 1.11 to tox.
+
+0.16.4 (2017-09-11)
+-------------------
+- Added support for SHA-256 signing. Thanks to WebSpider.
+- Bugfixes. Thanks to justinsg and charn.
+- Error handling made more extensible. This will be further improved in next versions.
+
+0.16.1 (2017-07-15)
+-------------------
+- Bugfixes. Thanks to canni, AmbientLighter, cranti and logston.
+- request is now passed to authentication backend (introduced in Django 1.11). Thanks to terite.
+
+0.16.0 (2017-04-14)
+-------------------
+- Upgrade pysaml2 dependency to version 4.4.0 which fixes some serialization issues. Thanks to nakato for the report.
+- Added support for HTTP Redirect binding with signed authentication requests. Many thanks to liquidpele for this feature and other related refactorings.
+- The custom permission_denied.html template was removed in favor of standard PermissionDenied exception. Thanks to mhindery.
+
+0.15.0 (2016-12-18)
+-------------------
+- Python 3.5 support. Thanks to timheap.
+- Added support for callable user attributes. Thanks to andy-miracl and joetsoi.
+- Security improvement: "next" URL is now checked. thanks to flupzor.
+- Improved testability. Thanks to flupzor.
+- Other bugfixes and minor improvements. Thanks to jamaalscarlett, ws0w, jaywink and liquidpele.
+
+0.14.5 (2016-09-19)
+-------------------
+- Django 1.10 support. Thanks to inducer.
+- Various fixes and minor improvements. Thanks to ajsmilutin, ganiserb, inducer, grunichev, liquidpele and darbula
+
+0.14.4 (2016-03-29)
+-------------------
+- Fix compatibility issue with pysaml2-4.0.3+. Thanks to jimr and astoltz.
+- Fix Django 1.9 compatibility issue in templates. Thanks to nikoskal.
+
+0.14.3 (2016-03-18)
+-------------------
+- Upgraded to pysaml2-4.0.5.
+- Added 'ACS_DEFAULT_REDIRECT_URL' setting for default redirection after successful authentication. Thanks to ganiserb.
+
+0.14.2 (2016-03-11)
+-------------------
+- Released under the original 'djangosaml2' package name; abandoning the djangosaml2-knaperek fork.
+
+0.14.1 (2016-03-09)
+-------------------
+- Upgraded to pysaml2-4.0.4.
+
+0.14.0 (2016-01-28)
+-------------------
+- Upgrade to pysaml2-4.0.2. Thanks to kviktor
+- Django 1.9 support. Thanks to Jordi Gutiérrez Hermoso
+
+0.13.2 (2015-06-24)
+-------------------
+- Improved usage of standard Python logging.
+
+0.13.1 (2015-06-05)
+-------------------
+- Added support for djangosaml2 specific user model defined by SAML_USER_MODEL setting
+
 0.13.0 (2015-02-12)
 -------------------
 - Django 1.7 support. Thanks to Kamei Toshimitsu
