@@ -208,7 +208,7 @@ class Saml2Backend(ModelBackend):
 
         Return True if the attribute was changed and False otherwise.
         """
-        field = obj._meta.get_field_by_name(attr)
+        field = obj._meta.get_field(attr)
         if len(value) > field.max_length:
             cleaned_value = value[:field.max_length]
             logger.warn('The attribute "%s" was trimmed from "%s" to "%s"' %
